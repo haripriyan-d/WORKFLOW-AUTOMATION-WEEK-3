@@ -1,0 +1,254 @@
+{
+  "assignment": "Assignment 1: Student Project Approval & Allocation System",
+  "test_cases": [
+    {
+      "id": "TC_A1_HAPPY_PATH",
+      "name": "Standard Happy Path - First-Time Approval & Allocation",
+      "description": "Student team submits complete proposal, passes validation, screens cleanly, zero plagiarism, approved by committee on first review, guide auto-matched and accepts within SLA.",
+      "input_payload": {
+        "teamId": "TEAM-2026-001",
+        "teamMembers": ["21CS001", "21CS002", "21CS003"],
+        "projectTitle": "Decentralized Energy Grid Optimization",
+        "domain": "Smart Grids & IoT",
+        "abstract": "A machine learning and IoT framework to balance grid load...",
+        "isFormValid": true,
+        "isTeamValid": true,
+        "similarityScore": 8.5,
+        "committeeDecision": "APPROVED",
+        "matchedGuide": "DR_SARAVANAN_CSE",
+        "guideResponse": "ACCEPTED",
+        "notificationRetries": 0,
+        "topicAttemptCount": 1
+      },
+      "expected_execution_path": [
+        "StartEvent_ProposalInitiated",
+        "Task_SubmitProposal",
+        "Task_ValidateProposalForm",
+        "Gateway_ValidationCheck",
+        "Task_CoordinatorScreening",
+        "Task_SimilarityCheck",
+        "Gateway_SimilarityCheck",
+        "Task_CommitteeEvaluation",
+        "Gateway_CommitteeDecision",
+        "SubProcess_GuideAllocation",
+        "Task_CheckGuideWorkload",
+        "Gateway_GuideMatch",
+        "Task_AllocateGuideRecord",
+        "Task_SendAllocationRequest",
+        "Task_GuideResponse",
+        "Gateway_GuideDecision",
+        "EndEvent_SubProcessSuccess",
+        "Task_RecordAllocationDB",
+        "Task_SendFinalNotification",
+        "EndEvent_ProjectAllocated"
+      ],
+      "expected_outcome": "PROJECT_ALLOCATED",
+      "allocated_guide": "DR_SARAVANAN_CSE"
+    },
+    {
+      "id": "TC_A1_F1_VALIDATION_RETRY",
+      "name": "F1 - Validation Error with Successful Resubmission",
+      "description": "Missing abstract causes validation failure. System returns error digest. Team fixes issue on attempt 2 and proceeds successfully.",
+      "input_payload": {
+        "teamId": "TEAM-2026-002",
+        "validationAttempts": 1,
+        "isFormValid": false,
+        "isTeamValid": true,
+        "resubmittedFormValid": true
+      },
+      "expected_execution_path": [
+        "Task_ValidateProposalForm",
+        "Gateway_ValidationCheck",
+        "Gateway_ValidationAttempts",
+        "Task_SubmitProposal",
+        "Task_ValidateProposalForm",
+        "Gateway_ValidationCheck",
+        "Task_CoordinatorScreening"
+      ],
+      "expected_outcome": "VALIDATION_PASSED_ON_RETRY"
+    },
+    {
+      "id": "TC_A1_F2_INVALID_TEAM",
+      "name": "F2 - Team Composition Rule Violation",
+      "description": "Student in team is already registered in another approved team. System rejects at validation and terminates with Error End Event.",
+      "input_payload": {
+        "teamId": "TEAM-2026-003",
+        "teamMembers": ["21CS001", "21CS099"],
+        "isFormValid": true,
+        "isTeamValid": false,
+        "errorCode": "ERR_INVALID_TEAM"
+      },
+      "expected_execution_path": [
+        "Task_ValidateProposalForm",
+        "Gateway_ValidationCheck",
+        "EndEvent_InvalidTeam"
+      ],
+      "expected_outcome": "ERROR_INVALID_TEAM"
+    },
+    {
+      "id": "TC_A1_F3_PLAGIARISM_MATCH",
+      "name": "F3 - Duplicate Topic Detected & Coordinator Reviews",
+      "description": "Similarity score is 42% against last year's thesis. Coordinator reviews and issues topic modification order.",
+      "input_payload": {
+        "teamId": "TEAM-2026-004",
+        "similarityScore": 42.0,
+        "duplicateDecision": "MODIFY"
+      },
+      "expected_execution_path": [
+        "Task_SimilarityCheck",
+        "Gateway_SimilarityCheck",
+        "Task_ReviewDuplicateTopic",
+        "Gateway_DuplicateDecision",
+        "Task_SubmitProposal"
+      ],
+      "expected_outcome": "TOPIC_MODIFICATION_REQUESTED"
+    },
+    {
+      "id": "TC_A1_F4_DEADLINE_MISSED",
+      "name": "F4 - Submission Deadline Missed with Late Approval",
+      "description": "14-day submission timer expires before team submits. Coordinator reviews medical reason and grants late approval.",
+      "input_payload": {
+        "teamId": "TEAM-2026-005",
+        "deadlineExpired": true,
+        "lateSubmissionApproved": true
+      },
+      "expected_execution_path": [
+        "BoundaryTimer_SubmissionDeadline",
+        "Task_ReviewLateSubmissionRequest",
+        "Gateway_LateApproval",
+        "Task_SubmitProposal"
+      ],
+      "expected_outcome": "LATE_SUBMISSION_GRANTED"
+    },
+    {
+      "id": "TC_A1_F5_COMMITTEE_REVISION",
+      "name": "F5 - Committee Demands Scope Revision",
+      "description": "Scope is excessively broad. Committee issues REVISE. Student team resubmits within 7 days and gets approved on Cycle 2.",
+      "input_payload": {
+        "teamId": "TEAM-2026-006",
+        "committeeDecision": "REVISE",
+        "revisionCycles": 1,
+        "resubmittedDecision": "APPROVED"
+      },
+      "expected_execution_path": [
+        "Task_CommitteeEvaluation",
+        "Gateway_CommitteeDecision",
+        "Gateway_RevisionCycles",
+        "Task_ReviseProposalContent",
+        "Task_CommitteeEvaluation",
+        "Gateway_CommitteeDecision",
+        "SubProcess_GuideAllocation"
+      ],
+      "expected_outcome": "APPROVED_AFTER_REVISION"
+    },
+    {
+      "id": "TC_A1_F6_COMMITTEE_REJECTED_NEW_TOPIC",
+      "name": "F6 - Committee Rejects & Allows 1 New Topic Submission",
+      "description": "Project unfeasible due to required supercomputer lab. Committee rejects. System grants 1 new topic attempt.",
+      "input_payload": {
+        "teamId": "TEAM-2026-007",
+        "committeeDecision": "REJECTED",
+        "topicAttemptCount": 1
+      },
+      "expected_execution_path": [
+        "Task_CommitteeEvaluation",
+        "Gateway_CommitteeDecision",
+        "Gateway_TopicRejectionAttempts",
+        "Task_SubmitProposal"
+      ],
+      "expected_outcome": "NEW_TOPIC_RESUBMISSION_ALLOWED"
+    },
+    {
+      "id": "TC_A1_F7_SLA_HOD_ESCALATION",
+      "name": "F7 - Review Delays Trigger Reminder & HoD Escalation",
+      "description": "Committee fails to review within 10 days. SLA2 interrupting timer triggers and elevates case directly to HoD.",
+      "input_payload": {
+        "teamId": "TEAM-2026-008",
+        "daysPending": 11,
+        "hodIntervention": true,
+        "committeeDecision": "APPROVED"
+      },
+      "expected_execution_path": [
+        "BoundaryTimer_SLA2_HoDEscalation",
+        "Task_EscalateToHoD",
+        "Gateway_CommitteeDecision",
+        "SubProcess_GuideAllocation"
+      ],
+      "expected_outcome": "APPROVED_BY_HOD_INTERVENTION"
+    },
+    {
+      "id": "TC_A1_F8_NO_GUIDE_AVAILABLE",
+      "name": "F8 - Domain Mismatch / Capacity Saturation - Manual Allocation",
+      "description": "All faculty guides in AI domain are full. DMN returns 'none'. Coordinator manually assigns adjunct co-guide.",
+      "input_payload": {
+        "teamId": "TEAM-2026-009",
+        "matchedGuide": "none",
+        "coordinatorManualGuide": "PROF_ADJUNCT_EXP"
+      },
+      "expected_execution_path": [
+        "Task_CheckGuideWorkload",
+        "Gateway_GuideMatch",
+        "Task_ManualGuideAllocation",
+        "Task_AllocateGuideRecord",
+        "Task_SendAllocationRequest"
+      ],
+      "expected_outcome": "MANUALLY_ASSIGNED_BY_COORDINATOR"
+    },
+    {
+      "id": "TC_A1_F9_GUIDE_DECLINE_AND_RERUN",
+      "name": "F9 - Assigned Guide Declines - Allocation Rule Re-run",
+      "description": "First assigned guide declines due to sabbatical. System excludes guide and re-runs business rule to find next match.",
+      "input_payload": {
+        "teamId": "TEAM-2026-010",
+        "guideResponse": "DECLINED",
+        "guideDeclineAttempts": 1,
+        "secondGuideResponse": "ACCEPTED"
+      },
+      "expected_execution_path": [
+        "Task_GuideResponse",
+        "Gateway_GuideDecision",
+        "Gateway_GuideDeclineAttempts",
+        "Task_CheckGuideWorkload",
+        "Gateway_GuideMatch",
+        "Task_AllocateGuideRecord",
+        "Task_SendAllocationRequest",
+        "EndEvent_SubProcessSuccess"
+      ],
+      "expected_outcome": "REALLOCATED_AND_CONFIRMED"
+    },
+    {
+      "id": "TC_A1_F10_SYSTEM_NOTIFICATION_FAILURE",
+      "name": "F10 - SMTP Notification Down - Retry & Manual Fallback",
+      "description": "SMTP gateway offline. System retries 3 times then falls back to Coordinator manual telephone notification.",
+      "input_payload": {
+        "teamId": "TEAM-2026-011",
+        "smtpError": true,
+        "notificationRetries": 3
+      },
+      "expected_execution_path": [
+        "Task_SendAllocationRequest",
+        "BoundaryError_NotificationFailure",
+        "Gateway_NotificationRetries",
+        "Task_ManualNotificationFallback",
+        "Task_GuideResponse"
+      ],
+      "expected_outcome": "MANUAL_NOTIFICATION_FALLBACK_SUCCESS"
+    },
+    {
+      "id": "TC_A1_F11_WITHDRAWAL_COMPENSATION",
+      "name": "F11 - Post-Approval Withdrawal Triggers Compensation",
+      "description": "Team member relocates leading to project cancellation. Boundary message event triggers compensation handler releasing guide slot.",
+      "input_payload": {
+        "teamId": "TEAM-2026-012",
+        "withdrawalMessageReceived": true
+      },
+      "expected_execution_path": [
+        "BoundaryMessage_Withdrawal",
+        "Event_TriggerCompensation",
+        "Task_CompensationReleaseGuideSlot",
+        "SubProcess_GuideAllocation"
+      ],
+      "expected_outcome": "GUIDE_SLOT_COMPENSATED_AND_RELEASED"
+    }
+  ]
+}

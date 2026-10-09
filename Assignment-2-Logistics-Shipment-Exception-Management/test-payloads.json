@@ -1,0 +1,243 @@
+{
+  "assignment": "Assignment 2: Logistics & Shipment Exception Management",
+  "test_cases": [
+    {
+      "id": "TC_A2_HAPPY_PATH",
+      "name": "Standard Happy Path - Express Domestic Delivery",
+      "description": "Shipper books domestic shipment, address valid, collected on first pickup attempt, scanned through hubs, recipient notified, delivered on first attempt with digital POD captured, invoice generated.",
+      "input_payload": {
+        "shipmentId": "EXP-2026-9001",
+        "shipperId": "CUST-SHP-882",
+        "recipientAddress": "42 Market Street, Sector 5, Tech City",
+        "isAddressValid": true,
+        "isInternational": false,
+        "customsCleared": true,
+        "parcelWeightKg": 2.5,
+        "pickupAttempts": 1,
+        "isInsured": true,
+        "declaredValue": 450.0,
+        "deliveryOutcome": "DELIVERED",
+        "deliveryAttempts": 1
+      },
+      "expected_execution_path": [
+        "StartEvent_BookingCreated",
+        "Task_CreateShipmentBooking",
+        "Task_ValidateAddressAndTariff",
+        "Gateway_AddressValidation",
+        "Task_AssignPickupDriver",
+        "Task_CollectAndScanParcel",
+        "Gateway_ParallelDispatchSplit",
+        "Task_SendShipperPickupNotice",
+        "SubProcess_HubLineHaulTransit",
+        "Task_HubInboundScan",
+        "Gateway_CustomsRequired",
+        "Gateway_TransitDelayOrTimer",
+        "Event_TransitArrivalTimer",
+        "EndEvent_TransitLegComplete",
+        "Gateway_ParallelDispatchJoin",
+        "Task_NotifyRecipientOutForDelivery",
+        "Task_DeliverParcelAndCapturePOD",
+        "Gateway_DeliveryOutcome",
+        "Task_ReceiveParcelAndProvidePOD",
+        "Task_CloseShipmentGenerateInvoice",
+        "EndEvent_ShipmentDelivered"
+      ],
+      "expected_outcome": "SHIPMENT_DELIVERED_AND_INVOICED",
+      "status": "DELIVERED"
+    },
+    {
+      "id": "TC_A2_E1_PICKUP_RESCHEDULE_CANCEL",
+      "name": "E1 - Pickup Failure Exceeding Maximum Attempts",
+      "description": "Shipper unavailable on pickup attempts 1 and 2, attempt 3 fails. System terminates booking and applies cancellation penalty.",
+      "input_payload": {
+        "shipmentId": "EXP-2026-9002",
+        "pickupAttempts": 3,
+        "pickupStatus": "SHIPPER_ABSENT",
+        "cancellationFee": 25.0
+      },
+      "expected_execution_path": [
+        "Task_CollectAndScanParcel",
+        "BoundaryError_PickupFailed",
+        "Task_HandlePickupException",
+        "Gateway_PickupAttempts",
+        "EndEvent_BookingCancelledFee"
+      ],
+      "expected_outcome": "BOOKING_CANCELLED_FEE_CHARGED"
+    },
+    {
+      "id": "TC_A2_E2_DOORSTEP_ADDRESS_SURCHARGE",
+      "name": "E2 - Incomplete Doorstep Address with Redirection Surcharge",
+      "description": "Delivery agent finds incorrect doorstep address. Contacts recipient, agrees on alternate address with $10 surcharge, re-attempts delivery.",
+      "input_payload": {
+        "shipmentId": "EXP-2026-9003",
+        "deliveryOutcome": "WRONG_ADDRESS",
+        "surchargeAccepted": true,
+        "surchargeAmount": 10.0,
+        "deliveryAttempts": 1
+      },
+      "expected_execution_path": [
+        "Task_DeliverParcelAndCapturePOD",
+        "Gateway_DeliveryOutcome",
+        "Task_ContactRecipientDoorstep",
+        "Gateway_DoorstepAddressSurcharge",
+        "Gateway_DeliveryAttempts",
+        "Task_NotifyRecipientOutForDelivery"
+      ],
+      "expected_outcome": "ADDRESS_REROUTED_WITH_SURCHARGE"
+    },
+    {
+      "id": "TC_A2_E3_DAMAGED_PARCEL_INSURANCE_CLAIM",
+      "name": "E3 - Damaged Parcel & Full Insurance Claims Settlement",
+      "description": "Parcel damaged during transit. Warehouse inspection documents damage. Insurance claim sub-process executes compensation to customer.",
+      "input_payload": {
+        "shipmentId": "EXP-2026-9004",
+        "deliveryOutcome": "DAMAGED",
+        "isInsured": true,
+        "claimAmount": 350.0,
+        "claimStatus": "APPROVED"
+      },
+      "expected_execution_path": [
+        "Gateway_DeliveryOutcome",
+        "Task_InspectDamagedParcel",
+        "Gateway_InsuranceCheck",
+        "SubProcess_ClaimsSettlement",
+        "Task_AssessClaimValuation",
+        "Task_DisburseCompensationOrReship",
+        "EndEvent_ShipmentReturnedToSender"
+      ],
+      "expected_outcome": "INSURANCE_CLAIM_PAID_AND_RETURNED"
+    },
+    {
+      "id": "TC_A2_E4_LOST_PARCEL_TRACING",
+      "name": "E4 - Missing Scan for 48 Hours & Declared Lost",
+      "description": "No scan recorded for 48 hours. Tracing sub-process executes 5-day bay audit. Parcel declared lost; customer compensated.",
+      "input_payload": {
+        "shipmentId": "EXP-2026-9005",
+        "hoursSinceLastScan": 49,
+        "tracingDays": 5,
+        "parcelFound": false,
+        "statutoryCompensation": 100.0
+      },
+      "expected_execution_path": [
+        "Gateway_TransitDelayOrTimer",
+        "Event_MissingScan48hTimer",
+        "SubProcess_TracingLostParcel",
+        "Task_InvestigateDepotCCTV",
+        "Event_Tracing5DayTimer",
+        "Task_DeclareLostAndCompensate",
+        "EndEvent_LostParcelClosed"
+      ],
+      "expected_outcome": "DECLARED_LOST_CUSTOMER_COMPENSATED"
+    },
+    {
+      "id": "TC_A2_E5_TRANSIT_DELAY_WEATHER_REROUTE",
+      "name": "E5 - Severe Weather Delay with Dynamic ETA Update & Reroute",
+      "description": "Line-haul truck encounters snowstorm. Control tower receives delay telemetry, informs customer of +18h ETA, and reroutes around pass.",
+      "input_payload": {
+        "shipmentId": "EXP-2026-9006",
+        "delayCause": "SEVERE_WEATHER_SNOWSTORM",
+        "additionalHoursETA": 18,
+        "vehicleRerouted": true
+      },
+      "expected_execution_path": [
+        "Gateway_TransitDelayOrTimer",
+        "Event_TransitDelayReceived",
+        "Task_NotifyCustomerDelayETA",
+        "Task_RerouteTransitVehicle",
+        "EndEvent_TransitLegComplete"
+      ],
+      "expected_outcome": "TRANSIT_DELAY_MITIGATED_ETA_UPDATED"
+    },
+    {
+      "id": "TC_A2_E6_CUSTOMS_HOLD_DOCUMENT_UPLOAD",
+      "name": "E6 - International Customs Hold with Shipper Uploading Docs",
+      "description": "Customs requires commercial invoice. Shipper receives digital request and uploads document within 2 days; shipment clears.",
+      "input_payload": {
+        "shipmentId": "EXP-2026-9007",
+        "isInternational": true,
+        "customsCleared": false,
+        "docsUploadedInDays": 2
+      },
+      "expected_execution_path": [
+        "Gateway_CustomsRequired",
+        "Task_RequestCustomsDocuments",
+        "Task_UploadCustomsDocs",
+        "Gateway_TransitDelayOrTimer"
+      ],
+      "expected_outcome": "CUSTOMS_CLEARED_TRANSIT_RESUMED"
+    },
+    {
+      "id": "TC_A2_E7_RECIPIENT_UNAVAILABLE_DEPOT_HOLD",
+      "name": "E7 - Recipient Unavailable after 3 Attempts - 7-Day Depot Hold",
+      "description": "Recipient not at home for 3 attempts. Parcel held at local depot for 7 days before returning to sender.",
+      "input_payload": {
+        "shipmentId": "EXP-2026-9008",
+        "deliveryOutcome": "UNAVAILABLE",
+        "deliveryAttempts": 3,
+        "depotHoldDays": 7,
+        "claimedAtDepot": false
+      },
+      "expected_execution_path": [
+        "Gateway_DeliveryOutcome",
+        "Gateway_DeliveryAttempts",
+        "Task_DepotHold7Days",
+        "EndEvent_ShipmentReturnedToSender"
+      ],
+      "expected_outcome": "DEPOT_HOLD_EXPIRED_RETURN_TO_SENDER"
+    },
+    {
+      "id": "TC_A2_E8_COD_PAYMENT_FAILURE",
+      "name": "E8 - Cash-on-Delivery Payment Failure - Return to Sender",
+      "description": "Recipient refuses cash-on-delivery collection at doorstep. Driver marks COD failure and returns parcel to origin hub.",
+      "input_payload": {
+        "shipmentId": "EXP-2026-9009",
+        "deliveryOutcome": "COD_FAILED",
+        "returnLogisticsInitiated": true
+      },
+      "expected_execution_path": [
+        "Task_DeliverParcelAndCapturePOD",
+        "Gateway_DeliveryOutcome",
+        "EndEvent_ShipmentReturnedToSender"
+      ],
+      "expected_outcome": "COD_REJECTED_RETURNED_TO_SENDER"
+    },
+    {
+      "id": "TC_A2_E9_SCANNER_OFFLINE_RECONCILIATION",
+      "name": "E9 - Hub Handheld Scanner Offline - Supervisor Manual Fix",
+      "description": "Scanner battery dies during sorting. Hub supervisor inputs barcode manually, triggers system database reconciliation.",
+      "input_payload": {
+        "shipmentId": "EXP-2026-9010",
+        "scannerOfflineError": true,
+        "manualSupervisorVerified": true
+      },
+      "expected_execution_path": [
+        "Task_HubInboundScan",
+        "BoundaryError_ScannerFailure",
+        "Task_ManualScanSupervisorUpdate",
+        "Task_ReconcileBarcodeData",
+        "Task_HubInboundScan"
+      ],
+      "expected_outcome": "MANUAL_RECONCILIATION_SUCCESS"
+    },
+    {
+      "id": "TC_A2_E10_IN_TRANSIT_CANCELLATION_COMPENSATION",
+      "name": "E10 - Shipper Cancels In-Transit - Compensation & Reversal",
+      "description": "Shipper cancels shipment after transit starts. Message boundary event triggers compensation handler, issuing refund minus fee.",
+      "input_payload": {
+        "shipmentId": "EXP-2026-9011",
+        "cancellationRequestedInTransit": true,
+        "originalFreightPaid": 60.0,
+        "cancellationFee": 15.0,
+        "netRefundIssued": 45.0
+      },
+      "expected_execution_path": [
+        "SubProcess_HubLineHaulTransit",
+        "BoundaryMessage_ShipperCancellation",
+        "Event_TriggerCompensationCancellation",
+        "Task_CompensateHaltAndReturnParcel",
+        "EndEvent_ShipmentReturnedToSender"
+      ],
+      "expected_outcome": "TRANSIT_HALTED_REFUND_COMPENSATED_RTS"
+    }
+  ]
+}

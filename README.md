@@ -1,11 +1,11 @@
-# BPMN 2.0 Project Assignments
+# Workflow Automation - Week 3 (BPMN 2.0 Project Assignments)
 
 [![BPMN 2.0](https://img.shields.io/badge/BPMN-2.0%20Standard-blue.svg)](https://www.omg.org/spec/BPMN/2.0/)
 [![Camunda Modeler](https://img.shields.io/badge/Camunda-Modeler%20Compatible-orange.svg)](https://camunda.com/)
 [![Test Suite](https://img.shields.io/badge/Simulations-23%2F23%20Passing-brightgreen.svg)]()
 [![Rubric Score](https://img.shields.io/badge/Rubric%20Coverage-20%2F20%20Marks-success.svg)]()
 
-This repository contains production-grade **BPMN 2.0 process definitions**, comprehensive **Failure Path Registers**, **test suites**, and an **automated simulation engine** for the academic BPMN Project Assignments:
+This repository contains production-grade **BPMN 2.0 process definitions**, comprehensive **Failure Path Registers**, **test suites**, and an **automated simulation engine** for **Week 3 Workflow Automation**:
 1. **Assignment 1: Student Project Approval & Allocation System**
 2. **Assignment 2: Logistics & Shipment Exception Management**
 
@@ -16,7 +16,7 @@ Both processes are fully modeled with **Camunda BPMN 2.0 XML with complete BPMND
 ## 📁 Repository Structure
 
 ```
-BPMN-Project-Assignments/
+WORKFLOW-AUTOMATION-WEEK-3/
 │
 ├── Assignment-1-Student-Project-Approval/
 │   ├── student-project-approval.bpmn       # Valid Camunda BPMN 2.0 XML with 5 Lanes & full BPMNDI coordinates
